@@ -4,7 +4,9 @@ from pygame.math import Vector2 as vector
 from settings import *
 from support import *
 
-from sprites import Generic, Block, Animated, Particle, Coin, Player, Spikes, Tooth, Shell
+from sprites import Generic, Block, Animated, Particle, Coin, Player, Spikes, Tooth, Shell, Cloud
+
+from random import choice, randint
 
 class Level:
 	def __init__(self, grid, switch, asset_dict):
@@ -19,9 +21,19 @@ class Level:
 		self.shell_sprites = pygame.sprite.Group()
 
 		self.build_level(grid, asset_dict)
+		
+        # level limits
+		self.level_limits = {
+			'left': -WINDOW_WIDTH,
+			'right': sorted(list(grid['terrain'].keys()), key = lambda pos: pos[0])[-1][0] + 500
+        }
 
 		# additional stuff
 		self.particle_surfs = asset_dict['particle']
+		self.cloud_surfs = asset_dict['clouds']
+		self.cloud_timer = pygame.USEREVENT + 2
+		pygame.time.set_timer(self.cloud_timer, 2000)
+		self.startup_clouds()
 
 	def build_level(self, grid, asset_dict):
 		for layer_name, layer in grid.items():
@@ -106,6 +118,21 @@ class Level:
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
 				self.switch()
 
+			if event.type == self.cloud_timer:
+				surf = choice(self.cloud_surfs)
+				surf = pygame.transform.scale2x(surf) if randint(0,5) > 3 else surf
+				x = self.level_limits['right'] + randint(100, 300)
+				y = self.horizon_y - randint(-50, 600)
+				Cloud((x,y), surf, self.all_sprites, self.level_limits['left'])
+
+	def startup_clouds(self):
+		for i in range(40):
+			surf = choice(self.cloud_surfs)
+			surf = pygame.transform.scale2x(surf) if randint(0,5) > 3 else surf
+			x = randint(self.level_limits['left'], self.level_limits['right'])
+			y = self.horizon_y - randint(-50, 600)
+			Cloud((x,y), surf, self.all_sprites, self.level_limits['left'])
+
 	def run(self, dt):
 		# update
 		self.event_loop()
@@ -123,13 +150,40 @@ class CameraGroup(pygame.sprite.Group):
 		self.display_surface = pygame.display.get_surface()
 		self.offset = vector()
 
+	def draw_horizon(self):
+		horizon_pos = self.horizon_y - self.offset.y
+		
+		if horizon_pos < WINDOW_HEIGHT:
+			sea_rect = pygame.Rect(0, horizon_pos, WINDOW_WIDTH, WINDOW_HEIGHT - horizon_pos)
+			pygame.draw.rect(self.display_surface, SEA_COLOR, sea_rect)
+			
+            # horizon line
+			horizon_rect1 = pygame.Rect(0,horizon_pos - 10,WINDOW_WIDTH,10)
+			horizon_rect2 = pygame.Rect(0,horizon_pos - 16,WINDOW_WIDTH,4)
+			horizon_rect3 = pygame.Rect(0,horizon_pos - 20,WINDOW_WIDTH,2)
+			pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect1)
+			pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect2)
+			pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect3)
+			pygame.draw.line(self.display_surface, HORIZON_COLOR, (0,horizon_pos), (WINDOW_WIDTH,horizon_pos),3)
+
+		if horizon_pos < 0:
+			self.display_surface.fill(SEA_COLOR)
+
 	def custom_draw(self, player):
 		self.offset.x = player.rect.centerx - WINDOW_WIDTH / 2
 		self.offset.y = player.rect.centery - WINDOW_HEIGHT / 2
+		
+		for sprite in self:
+			if sprite.z == LEVEL_LAYERS['clouds']:
+				offset_rect = sprite.rect.copy()
+				offset_rect.center -= self.offset
+				self.display_surface.blit(sprite.image, offset_rect)
 
+
+		self.draw_horizon()
 		for sprite in self:
 			for layer in LEVEL_LAYERS.values():
-				if sprite.z == layer:
+				if sprite.z == layer and sprite.z != LEVEL_LAYERS['clouds']:
 					offset_rect = sprite.rect.copy()
 					offset_rect.center -= self.offset
 					self.display_surface.blit(sprite.image, offset_rect)
