@@ -12,10 +12,11 @@ class Level:
 		self.switch = switch
 
 		# groups 
-		self.all_sprites = pygame.sprite.Group()
+		self.all_sprites = CameraGroup()
 		self.coin_sprites = pygame.sprite.Group()
 		self.damage_sprites = pygame.sprite.Group()
 		self.collision_sprites = pygame.sprite.Group()
+		self.shell_sprites = pygame.sprite.Group()
 
 		self.build_level(grid, asset_dict)
 
@@ -29,9 +30,9 @@ class Level:
 					Generic(pos, asset_dict['land'][data], [self.all_sprites, self.collision_sprites])
 				if layer_name == 'water':
 					if data == 'top':
-						Animated(asset_dict['water top'], pos, self.all_sprites)
+						Animated(asset_dict['water top'], pos, self.all_sprites, LEVEL_LAYERS['water'])
 					else:
-						Generic(pos, asset_dict['water bottom'], self.all_sprites)
+						Generic(pos, asset_dict['water bottom'], self.all_sprites, LEVEL_LAYERS['water'])
 
 				match data:
 					case 0: self.player = Player(pos, asset_dict['player'], self.all_sprites, self.collision_sprites)
@@ -43,9 +44,24 @@ class Level:
 
 					# enemies
 					case 7: Spikes(asset_dict['spikes'], pos, [self.all_sprites, self.damage_sprites])
-					case 8: Tooth(asset_dict['tooth'], pos, [self.all_sprites, self.damage_sprites])
-					case 9: Shell('left', asset_dict['shell'], pos, [self.all_sprites, self.collision_sprites])
-					case 10: Shell('right', asset_dict['shell'], pos, [self.all_sprites, self.collision_sprites])
+					case 8: 
+						Tooth(asset_dict['tooth'], pos, [self.all_sprites, self.damage_sprites], self.collision_sprites)
+					case 9: 
+						Shell(
+							orientation = 'left', 
+							assets = asset_dict['shell'], 
+							pos =  pos, 
+							group =  [self.all_sprites, self.collision_sprites, self.shell_sprites],
+							pearl_surf = asset_dict['pearl'],
+							damage_sprites = self.damage_sprites)
+					case 10: 
+						Shell(
+							orientation = 'right', 
+							assets = asset_dict['shell'], 
+							pos =  pos, 
+							group =  [self.all_sprites, self.collision_sprites, self.shell_sprites],
+							pearl_surf = asset_dict['pearl'],
+							damage_sprites = self.damage_sprites)
 
 					# palm trees
 					case 11: 
@@ -61,10 +77,13 @@ class Level:
 						Animated(asset_dict['palms']['right_fg'], pos, self.all_sprites)
 						Block(pos + vector(50,0), (76,50), self.collision_sprites)
 					
-					case 15: Animated(asset_dict['palms']['small_bg'], pos, self.all_sprites)
-					case 16: Animated(asset_dict['palms']['large_bg'], pos, self.all_sprites)
-					case 17: Animated(asset_dict['palms']['left_bg'], pos, self.all_sprites)
-					case 18: Animated(asset_dict['palms']['right_bg'], pos, self.all_sprites)
+					case 15: Animated(asset_dict['palms']['small_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
+					case 16: Animated(asset_dict['palms']['large_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
+					case 17: Animated(asset_dict['palms']['left_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
+					case 18: Animated(asset_dict['palms']['right_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
+
+		for sprite in self.shell_sprites:
+			sprite.player = self.player
 
 	def get_coins(self):
 		collided_coins = pygame.sprite.spritecollide(self.player, self.coin_sprites, True)
@@ -87,4 +106,21 @@ class Level:
 
 		# drawing
 		self.display_surface.fill(SKY_COLOR)
-		self.all_sprites.draw(self.display_surface)
+		self.all_sprites.custom_draw(self.player)
+
+class CameraGroup(pygame.sprite.Group):
+	def __init__(self):
+		super().__init__()
+		self.display_surface = pygame.display.get_surface()
+		self.offset = vector()
+
+	def custom_draw(self, player):
+		self.offset.x = player.rect.centerx - WINDOW_WIDTH / 2
+		self.offset.y = player.rect.centery - WINDOW_HEIGHT / 2
+
+		for sprite in self:
+			for layer in LEVEL_LAYERS.values():
+				if sprite.z == layer:
+					offset_rect = sprite.rect.copy()
+					offset_rect.center -= self.offset
+					self.display_surface.blit(sprite.image, offset_rect)
