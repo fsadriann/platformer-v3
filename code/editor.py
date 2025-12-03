@@ -71,6 +71,7 @@ class Editor:
 			origin = self.origin,
 			group = [self.canvas_objects, self.background])
 
+
 	# support
 	def get_current_cell(self, obj = None):
 		distance_to_origin = vector(mouse_pos()) - self.origin if not obj else vector(obj.distance_to_origin) - self.origin
@@ -143,6 +144,7 @@ class Editor:
 				return sprite
 
 	def create_grid(self):
+		
 		# add objects to the tiles
 
 		for tile in self.canvas_data.values():
@@ -151,23 +153,23 @@ class Editor:
 		for obj in self.canvas_objects:
 			current_cell = self.get_current_cell(obj)
 			offset = vector(obj.distance_to_origin) - (vector(current_cell) * TILE_SIZE)
-			
-			if current_cell in self.canvas_data:
+
+			if current_cell in self.canvas_data: # tile exists already
 				self.canvas_data[current_cell].add_id(obj.tile_id, offset)
-			else:
+			else: # no tile exists yet 
 				self.canvas_data[current_cell] = CanvasTile(obj.tile_id, offset)
-		
+
 		# create an empty grid
 		layers = {
 			'water': {},
 			'bg palms': {},
-			'terrain': {},
+			'terrain': {}, 
 			'enemies': {},
-			'coins': {},
-			'fg objects': {}
+			'coins': {}, 
+			'fg objects': {},
 		}
 
-		# grid offset
+		# grid offset 
 		left = sorted(self.canvas_data.keys(), key = lambda tile: tile[0])[0][0]
 		top = sorted(self.canvas_data.keys(), key = lambda tile: tile[1])[0][1]
 
@@ -185,19 +187,20 @@ class Editor:
 				layers['terrain'][(x,y)] = tile.get_terrain() if tile.get_terrain() in self.land_tiles else 'X'
 
 			if tile.coin:
-				layers['coins'][(x + TILE_SIZE / 2, y + TILE_SIZE / 2)] = tile.coin
+				layers['coins'][(x + TILE_SIZE // 2,y + TILE_SIZE // 2)] = tile.coin
 
 			if tile.enemy:
-				layers['enemies'][(x, y)] = tile.enemy
+				layers['enemies'][x,y] = tile.enemy
 
-			if tile.objects:
+			if tile.objects: # (obj, offset)
 				for obj, offset in tile.objects:
-					if obj in [key for key, value in EDITOR_DATA.items() if value['style'] == 'palm bg']:
+					if obj in [key for key, value in EDITOR_DATA.items() if value['style'] == 'palm_bg']: # bg palm
 						layers['bg palms'][(int(x + offset.x), int(y + offset.y))] = obj
 					else: # fg objects
 						layers['fg objects'][(int(x + offset.x), int(y + offset.y))] = obj
 
 		return layers
+
 
 	# input
 	def event_loop(self):
@@ -235,6 +238,7 @@ class Editor:
 				self.origin.y -= event.y * 50
 			else:
 				self.origin.x -= event.y * 50
+
 
 		# panning update
 		if self.pan_active:
@@ -311,6 +315,7 @@ class Editor:
 				if sprite.selected:
 					sprite.drag_end(self.origin)
 					self.object_drag_active = False
+
 
 	# drawing 
 	def draw_tile_lines(self):
@@ -449,6 +454,7 @@ class Editor:
 			pos = [randint(0, WINDOW_WIDTH),randint(0, WINDOW_HEIGHT)]
 			self.current_clouds.append({'surf': surf, 'pos': pos, 'speed': randint(20,50)})
 
+
 	# update
 	def run(self, dt):
 		self.event_loop()
@@ -487,7 +493,7 @@ class CanvasTile:
 		# objects
 		self.objects = []
 
-		self.add_id(tile_id, offset= offset)
+		self.add_id(tile_id, offset = offset)
 		self.is_empty = False
 
 	def add_id(self, tile_id, offset = vector()):
@@ -497,9 +503,9 @@ class CanvasTile:
 			case 'water': self.has_water = True
 			case 'coin': self.coin = tile_id
 			case 'enemy': self.enemy = tile_id
-			case _:
+			case _: # objects
 				if (tile_id, offset) not in self.objects:
-					self.objects.append((tile_id,offset))
+					self.objects.append((tile_id, offset))
 
 	def remove_id(self, tile_id):
 		options = {key: value['style'] for key, value in EDITOR_DATA.items()}
@@ -516,51 +522,11 @@ class CanvasTile:
 
 	def get_water(self):
 		return 'bottom' if self.water_on_top else 'top'
-	
+
 	def get_terrain(self):
 		return ''.join(self.terrain_neighbors)
 
 class CanvasObject(pygame.sprite.Sprite):
-	def __init__(self, pos, frames, tile_id, origin, group):
-		super().__init__(group)
-		self.tile_id = tile_id
-
-		# animation
-		self.frames = frames
-		self.frame_index = 0
-
-		self.image = self.frames[self.frame_index]
-		self.rect = self.image.get_rect(center = pos)
-
-		# movement
-		self.distance_to_origin = vector(self.rect.topleft) - origin
-		self.selected = False
-		self.mouse_offset = vector()
-
-	def start_drag(self):
-		self.selected = True
-		self.mouse_offset = vector(mouse_pos()) - vector(self.rect.topleft)
-
-	def drag(self):
-		if self.selected:
-			self.rect.topleft = mouse_pos() - self.mouse_offset
-
-	def drag_end(self, origin):
-		self.selected = False
-		self.distance_to_origin = vector(self.rect.topleft) - origin
-
-	def animate(self, dt):
-		self.frame_index += ANIMATION_SPEED * dt
-		self.frame_index = 0 if self.frame_index >= len(self.frames) else self.frame_index
-		self.image = self.frames[int(self.frame_index)]
-		self.rect = self.image.get_rect(midbottom = self.rect.midbottom)
-
-	def pan_pos(self, origin):
-		self.rect.topleft = origin + self.distance_to_origin
-
-	def update(self, dt):
-		self.animate(dt)
-		self.drag()
 	def __init__(self, pos, frames, tile_id, origin, group):
 		super().__init__(group)
 		self.tile_id = tile_id

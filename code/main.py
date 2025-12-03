@@ -13,7 +13,7 @@ from os import walk
 class Main:
 	def __init__(self):
 		pygame.init()
-		self.display_surface = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT))
+		self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 		self.clock = pygame.time.Clock()
 		self.imports()
 
@@ -21,7 +21,7 @@ class Main:
 		self.transition = Transition(self.toggle)
 		self.editor = Editor(self.land_tiles, self.switch)
 
-		# cursor
+		# cursor 
 		surf = load('graphics/cursors/mouse.png').convert_alpha()
 		cursor = pygame.cursors.Cursor((0,0), surf)
 		pygame.mouse.set_cursor(cursor)
@@ -44,7 +44,10 @@ class Main:
 		# enemies
 		self.spikes = load('graphics/enemies/spikes/spikes.png').convert_alpha()
 		self.tooth = {folder: import_folder(f'graphics/enemies/tooth/{folder}') for folder in list(walk('graphics/enemies/tooth'))[0][1]}
-		self.shell = {folder: import_folder(f'graphics/enemies/shell_left/{folder}') for folder in list(walk('graphics/enemies/shell_left'))[0][1]}
+		self.shell = {folder: import_folder(f'graphics/enemies/shell_left/{folder}') for folder in list(walk('graphics/enemies/shell_left/'))[0][1]}
+	
+		# player
+		self.player_graphics = {folder: import_folder(f'graphics/player/{folder}') for folder in list(walk('graphics/player/'))[0][1]}
 
 	def toggle(self):
 		self.editor_active = not self.editor_active
@@ -52,7 +55,7 @@ class Main:
 	def switch(self, grid = None):
 		self.transition.active = True
 		if grid:
-			self.level = Level(grid, self.switch, {
+			self.level = Level(grid, self.switch,{
 				'land': self.land_tiles,
 				'water bottom': self.water_bottom,
 				'water top': self.water_top_animation,
@@ -63,8 +66,9 @@ class Main:
 				'palms': self.palms,
 				'spikes': self.spikes,
 				'tooth': self.tooth,
-				'shell': self.shell
-			})
+				'shell': self.shell,
+				'player': self.player_graphics
+				})
 
 	def run(self):
 		while True:
@@ -77,6 +81,7 @@ class Main:
 			self.transition.display(dt)
 			pygame.display.update()
 
+
 class Transition:
 	def __init__(self, toggle):
 		self.display_surface = pygame.display.get_surface()
@@ -85,23 +90,23 @@ class Transition:
 
 		self.border_width = 0
 		self.direction = 1
-		self.center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+		self.center = (WINDOW_WIDTH /2, WINDOW_HEIGHT / 2)
 		self.radius = vector(self.center).magnitude()
 		self.threshold = self.radius + 100
-	
+
 	def display(self, dt):
 		if self.active:
 			self.border_width += 1000 * dt * self.direction
 			if self.border_width >= self.threshold:
 				self.direction = -1
 				self.toggle()
-
-			if self.border_width <= 0:
+			
+			if self.border_width < 0:
 				self.active = False
 				self.border_width = 0
 				self.direction = 1
-			pygame.draw.circle(self.display_surface, 'black', self.center, self.radius, int(self.border_width))
+			pygame.draw.circle(self.display_surface, 'black',self.center, self.radius, int(self.border_width))
 
 if __name__ == '__main__':
 	main = Main()
-	main.run()
+	main.run() 
