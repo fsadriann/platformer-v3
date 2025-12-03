@@ -36,6 +36,9 @@ class Level:
 
 				match data:
 					case 0: self.player = Player(pos, asset_dict['player'], self.all_sprites, self.collision_sprites)
+					case 1:
+						self.horizon_y = pos[1]
+						self.all_sprites.horizon_y = pos[1]
 					
 					# coins
 					case 4: Coin('gold', asset_dict['gold'], pos, [self.all_sprites, self.coin_sprites])
@@ -90,6 +93,11 @@ class Level:
 		for sprite in collided_coins:
 			Particle(self.particle_surfs, sprite.rect.center, self.all_sprites)
 
+	def get_damage(self):
+		collision_sprites = pygame.sprite.spritecollide(self.player, self.damage_sprites, False, pygame.sprite.collide_mask)
+		if collision_sprites:
+			self.player.damage()
+
 	def event_loop(self):
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
@@ -103,6 +111,7 @@ class Level:
 		self.event_loop()
 		self.all_sprites.update(dt)
 		self.get_coins()
+		self.get_damage()
 
 		# drawing
 		self.display_surface.fill(SKY_COLOR)
