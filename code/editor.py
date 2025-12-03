@@ -73,7 +73,7 @@ class Editor:
 
 		# music
 		self.editor_music = pygame.mixer.Sound('audio/Explorer.ogg')
-		self.editor_music.set_volume(0.2)
+		self.editor_music.set_volume(0.4)
 		self.editor_music.play(loops = -1)
 
 	# support
@@ -227,7 +227,7 @@ class Editor:
 
 			self.create_clouds(event)
 
-	def pan_input(self, event):
+	def pan_input(self, event): 
 
 		# middle mouse button pressed / released 
 		if event.type == pygame.MOUSEBUTTONDOWN and mouse_buttons()[1]:
@@ -243,7 +243,8 @@ class Editor:
 				self.origin.y -= event.y * 50
 			else:
 				self.origin.x -= event.y * 50
-
+			for sprite in self.canvas_objects:
+				sprite.pan_pos(self.origin)
 
 		# panning update
 		if self.pan_active:
@@ -262,7 +263,8 @@ class Editor:
 
 	def menu_click(self, event):
 		if event.type == pygame.MOUSEBUTTONDOWN and self.menu.rect.collidepoint(mouse_pos()):
-			self.selection_index = self.menu.click(mouse_pos(), mouse_buttons())
+			new_index = self.menu.click(mouse_pos(), mouse_buttons())
+			self.selection_index = new_index if new_index else self.selection_index
 
 	def canvas_add(self):
 		if mouse_buttons()[0] and not self.menu.rect.collidepoint(mouse_pos()) and not self.object_drag_active:
